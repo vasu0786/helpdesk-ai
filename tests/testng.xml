@@ -1,0 +1,25 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="HelpDesk AI">
+
+    <!-- All API tests except the SLA ones.
+         SLA tests need the app started with short settings, so run them separately:
+         mvn test -Dtest=SlaApiTest -->
+    <test name="API">
+        <groups>
+            <run>
+                <exclude name="sla"/>
+            </run>
+        </groups>
+        <packages>
+            <package name="com.helpdesk.tests.api.test"/>
+        </packages>
+    </test>
+
+    <!-- Uncomment when the first UI test class exists in ui/test
+    <test name="UI">
+        <packages>
+            <package name="com.helpdesk.tests.ui.test"/>
+        </packages>
+    </test>
+    -->
+</suite>

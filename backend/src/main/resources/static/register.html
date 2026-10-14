@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<main class="narrow">
+  <h1>HelpDesk AI</h1>
+  <div class="card">
+    <h2>Create a customer account</h2>
+    <div class="alert error hidden" id="error" data-testid="register-error"></div>
+    <form id="register-form" data-testid="register-form" novalidate>
+      <div class="field">
+        <label for="fullName">Full name</label>
+        <input id="fullName" name="fullName" data-testid="register-name" required>
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" data-testid="register-email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password (min 8 characters)</label>
+        <input id="password" name="password" type="password" data-testid="register-password" required>
+      </div>
+      <button type="submit" data-testid="register-submit">Create account</button>
+    </form>
+    <p class="small muted">Already registered? <a href="/login.html" data-testid="login-link">Log in</a></p>
+  </div>
+</main>
+<script>
+  const form = document.getElementById("register-form");
+  const error = document.getElementById("error");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    error.classList.add("hidden");
+    try {
+      const res = await Api.post("/auth/register", {
+        fullName: form.fullName.value, email: form.email.value, password: form.password.value });
+      Api.saveSession(res);
+      location.href = Api.homeFor(res.user);
+    } catch (err) {
+      Api.showFieldErrors(form, err);
+      Api.showError(error, err);
+    }
+  });
+</script>
+</body>
+</html>

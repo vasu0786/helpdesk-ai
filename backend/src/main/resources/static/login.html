@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<main class="narrow">
+  <h1>HelpDesk AI</h1>
+  <div class="card">
+    <h2>Log in</h2>
+    <div class="alert error hidden" id="error" data-testid="login-error"></div>
+    <form id="login-form" data-testid="login-form" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" data-testid="login-email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" data-testid="login-password" required>
+      </div>
+      <button type="submit" data-testid="login-submit">Log in</button>
+    </form>
+    <p class="small muted">No account? <a href="/register.html" data-testid="register-link">Register as a customer</a></p>
+  </div>
+  <details class="card small">
+    <summary>Demo accounts</summary>
+    <p>admin@helpdesk.local / Admin@123<br>agent1@helpdesk.local / Agent@123<br>agent2@helpdesk.local / Agent@123<br>customer@helpdesk.local / Customer@123</p>
+  </details>
+</main>
+<script>
+  const form = document.getElementById("login-form");
+  const error = document.getElementById("error");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    error.classList.add("hidden");
+    try {
+      const res = await Api.post("/auth/login", { email: form.email.value, password: form.password.value });
+      Api.saveSession(res);
+      const next = new URLSearchParams(location.search).get("next");
+      location.href = next && next.startsWith("/") && !next.startsWith("//") ? next : Api.homeFor(res.user);
+    } catch (err) {
+      Api.showError(error, err.status === 400 ? new Error("Enter your email and password") : err);
+    }
+  });
+</script>
+</body>
+</html>

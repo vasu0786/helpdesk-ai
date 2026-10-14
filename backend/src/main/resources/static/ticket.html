@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<header id="app-header"></header>
+<main>
+  <div class="alert success hidden" id="created" data-testid="ticket-created-message">Ticket submitted. Our team will get back to you soon.</div>
+  <div class="alert error hidden" id="error" data-testid="ticket-error"></div>
+
+  <div id="page" class="hidden">
+    <h1><span class="muted" data-testid="ticket-id"></span> <span data-testid="ticket-subject" id="subject"></span></h1>
+
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h2>Description</h2>
+          <div class="pre" id="description" data-testid="ticket-description"></div>
+        </div>
+
+        <div class="card">
+          <h2>Conversation</h2>
+          <div id="comments" data-testid="comments"></div>
+          <p class="muted hidden" id="no-comments" data-testid="no-comments">No replies yet.</p>
+
+          <form id="reply-form" data-testid="reply-form" novalidate>
+            <div class="alert error hidden" id="reply-error" data-testid="reply-error"></div>
+            <div class="field">
+              <label for="reply-body">Reply</label>
+              <textarea id="reply-body" name="body" maxlength="5000" data-testid="reply-body"></textarea>
+            </div>
+            <div class="row" style="align-items:center">
+              <label class="check staff-only hidden" style="flex:1 1 auto">
+                <input type="checkbox" id="reply-internal" data-testid="reply-internal"> Internal note (hidden from customer)
+              </label>
+              <div style="flex:0 0 auto"><button type="submit" data-testid="reply-submit">Send</button></div>
+            </div>
+          </form>
+          <p class="muted hidden" id="closed-note" data-testid="closed-note">This ticket is closed.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Details</h2>
+          <dl class="meta">
+            <dt>Status</dt><dd id="m-status"></dd>
+            <dt>Priority</dt><dd id="m-priority"></dd>
+            <dt>Category</dt><dd id="m-category"></dd>
+            <dt>SLA</dt><dd><span id="m-sla"></span> <div class="small muted" id="m-sla-due" data-testid="ticket-sla-due"></div></dd>
+            <dt>Customer</dt><dd id="m-customer" data-testid="ticket-customer"></dd>
+            <dt>Assignee</dt><dd id="m-assignee" data-testid="ticket-assignee"></dd>
+            <dt>Created</dt><dd id="m-created" data-testid="ticket-created-at"></dd>
+          </dl>
+        </div>
+
+
+        <div class="card staff-only hidden" data-testid="actions-panel">
+          <h2>Update ticket</h2>
+          <div class="alert error hidden" id="update-error" data-testid="update-error"></div>
+          <div class="alert success hidden" id="update-ok" data-testid="update-success">Saved.</div>
+          <form id="update-form" novalidate>
+            <div class="field"><label for="u-status">Status</label><select id="u-status" data-testid="update-status"></select></div>
+            <div class="field"><label for="u-priority">Priority</label><select id="u-priority" data-testid="update-priority"></select></div>
+            <div class="field"><label for="u-category">Category</label><select id="u-category" data-testid="update-category"></select></div>
+            <div class="field"><label for="u-assignee">Assignee</label><select id="u-assignee" data-testid="update-assignee"></select></div>
+            <button type="submit" data-testid="update-submit">Save changes</button>
+          </form>
+          <button class="danger admin-only hidden" id="delete" data-testid="delete-ticket" style="margin-top:12px">Delete ticket</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+  const me = Api.requireRole();
+  const id = new URLSearchParams(location.search).get("id");
+  const staff = Api.isStaff(me);
+  let ticket;
+  let agents = [];
+
+  if (new URLSearchParams(location.search).get("created")) document.getElementById("created").classList.remove("hidden");
+  if (staff) document.querySelectorAll(".staff-only").forEach(e => e.classList.remove("hidden"));
+  if (me && me.role === "ADMIN") document.querySelectorAll(".admin-only").forEach(e => e.classList.remove("hidden"));
+
+  const $ = s => document.getElementById(s);
+  const options = (values, selected, blank) =>
+    (blank ? '<option value="">' + blank + "</option>" : "") +
+    values.map(v => '<option value="' + v + '"' + (v === selected ? " selected" : "") + ">" + Api.label(v) + "</option>").join("");
+
+  function render() {
+    const t = ticket;
+    $("page").classList.remove("hidden");
+    document.title = "#" + t.id + " " + t.subject + " · HelpDesk AI";
+    document.querySelector('[data-testid="ticket-id"]').textContent = "#" + t.id;
+    $("subject").textContent = t.subject;
+    $("description").textContent = t.description;
+    $("m-status").innerHTML = Api.badge(t.status, "ticket-status");
+    $("m-priority").innerHTML = Api.badge(t.priority, "ticket-priority");
+    $("m-category").innerHTML = Api.badge(t.category, "ticket-category");
+    $("m-sla").innerHTML = Api.slaBadge(t, "ticket-sla");
+    $("m-sla-due").textContent = "Due " + Api.dateTime(t.sla.dueAt);
+    $("m-customer").textContent = t.customerEmail;
+    $("m-assignee").textContent = t.assignee ? t.assignee.fullName : "Unassigned";
+    $("m-created").textContent = Api.dateTime(t.createdAt);
+
+    const closed = t.status === "CLOSED";
+    $("reply-form").classList.toggle("hidden", closed);
+    $("closed-note").classList.toggle("hidden", !closed);
+
+    if (!staff) return;
+
+    $("u-status").innerHTML = options([t.status, ...Api.STATUS_FLOW[t.status]], t.status);
+    $("u-priority").innerHTML = options(Api.PRIORITIES, t.priority);
+    $("u-category").innerHTML = options(Api.CATEGORIES, t.category, "Not set");
+    $("u-assignee").innerHTML = '<option value="">Unassigned</option>' + agents.map(a =>
+      '<option value="' + a.id + '"' + (t.assignee && t.assignee.id === a.id ? " selected" : "") + ">" +
+      Api.esc(a.fullName) + " (" + a.role.toLowerCase() + ")</option>").join("");
+  }
+
+  function renderComments(list) {
+    $("no-comments").classList.toggle("hidden", list.length > 0);
+    $("comments").innerHTML = list.map(c => {
+      const cls = c.authorRole === "SYSTEM" ? "system" : c.internal ? "internal" : c.authorRole === "CUSTOMER" ? "" : "staff";
+      return '<div class="comment ' + cls + '" data-testid="comment"' + (c.internal ? ' data-internal="true"' : "") + ">" +
+        '<div class="who">' + Api.esc(c.authorEmail) + " · " + Api.label(c.authorRole) +
+        (c.internal ? " · internal" : "") + " · " + Api.dateTime(c.createdAt) + "</div>" +
+        '<div class="pre" data-testid="comment-body">' + Api.esc(c.body) + "</div></div>";
+    }).join("");
+  }
+
+  async function load() {
+    try {
+      const [t, comments] = await Promise.all([Api.get("/tickets/" + id), Api.get("/tickets/" + id + "/comments")]);
+      ticket = t;
+      if (staff && !agents.length) {
+        agents = (await Api.get("/users")).filter(u => u.role !== "CUSTOMER" && u.active);
+      }
+      render();
+      renderComments(comments);
+    } catch (err) {
+      $("page").classList.add("hidden");
+      Api.showError($("error"), err);
+    }
+  }
+
+  $("reply-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    $("reply-error").classList.add("hidden");
+    try {
+      await Api.post("/tickets/" + id + "/comments", { body: $("reply-body").value, internal: staff && $("reply-internal").checked });
+      $("reply-body").value = "";
+      $("reply-internal").checked = false;
+      await load();
+    } catch (err) {
+      Api.showError($("reply-error"), err.body && err.body.fieldErrors && err.body.fieldErrors.body ? new Error("Reply " + err.body.fieldErrors.body) : err);
+    }
+  });
+
+  if (staff) {
+    $("update-form").addEventListener("submit", async e => {
+      e.preventDefault();
+      $("update-error").classList.add("hidden");
+      $("update-ok").classList.add("hidden");
+      const body = {};
+      if ($("u-status").value !== ticket.status) body.status = $("u-status").value;
+      if ($("u-priority").value !== ticket.priority) body.priority = $("u-priority").value;
+      if ($("u-category").value && $("u-category").value !== ticket.category) body.category = $("u-category").value;
+      const currentAssignee = ticket.assignee ? String(ticket.assignee.id) : "";
+      if ($("u-assignee").value !== currentAssignee) {
+        if ($("u-assignee").value) body.assigneeId = Number($("u-assignee").value); else body.unassign = true;
+      }
+      try {
+        ticket = await Api.patch("/tickets/" + id, body);
+        render();
+        $("update-ok").classList.remove("hidden");
+        load();
+      } catch (err) { Api.showError($("update-error"), err); }
+    });
+    $("delete").addEventListener("click", async () => {
+      if (!confirm("Delete ticket #" + id + "? This cannot be undone.")) return;
+      try { await Api.del("/tickets/" + id); location.href = "/dashboard.html"; }
+      catch (err) { Api.showError($("update-error"), err); }
+    });
+  }
+
+  if (me) load();
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<header id="app-header"></header>
+<main>
+  <h1>Agent dashboard</h1>
+  <div class="stats" id="stats" data-testid="stats"></div>
+
+  <div class="card">
+    <form id="filters" class="row" data-testid="filters">
+      <div><label for="f-q">Search</label><input id="f-q" name="q" placeholder="Subject or email" data-testid="filter-search"></div>
+      <div><label for="f-status">Status</label><select id="f-status" name="status" data-testid="filter-status"></select></div>
+      <div><label for="f-priority">Priority</label><select id="f-priority" name="priority" data-testid="filter-priority"></select></div>
+      <div><label for="f-category">Category</label><select id="f-category" name="category" data-testid="filter-category"></select></div>
+      <div><label for="f-assignee">Assignee</label>
+        <select id="f-assignee" name="assignee" data-testid="filter-assignee">
+          <option value="">Anyone</option><option value="me">Me</option><option value="unassigned">Unassigned</option>
+        </select></div>
+      <div><label for="f-breached">SLA</label>
+        <select id="f-breached" name="breached" data-testid="filter-breached">
+          <option value="">Any</option><option value="true">Breached</option><option value="false">Not breached</option>
+        </select></div>
+      <div style="flex:0 0 auto"><button type="button" class="secondary" id="clear" data-testid="filter-clear">Clear</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="alert error hidden" id="error"></div>
+    <div class="table-wrap">
+      <table data-testid="tickets-table">
+        <thead><tr>
+          <th>#</th><th>Subject</th><th>Customer</th><th>Status</th><th>Priority</th><th>Category</th>
+          <th>Assignee</th><th>SLA</th><th>Created</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="muted hidden" id="empty" data-testid="tickets-empty">No tickets match these filters.</p>
+    <div class="pager">
+      <span class="small muted" id="page-info" data-testid="page-info"></span>
+      <button class="secondary" id="prev" data-testid="page-prev">Previous</button>
+      <button class="secondary" id="next" data-testid="page-next">Next</button>
+    </div>
+  </div>
+</main>
+<script>
+  const me = Api.requireRole("AGENT", "ADMIN");
+  const form = document.getElementById("filters");
+  let page = 0;
+
+  function fillSelect(sel, values, anyLabel) {
+    sel.innerHTML = '<option value="">' + anyLabel + "</option>" +
+      values.map(v => '<option value="' + v + '">' + Api.label(v) + "</option>").join("");
+  }
+  fillSelect(form.status, Api.STATUSES, "Any");
+  fillSelect(form.priority, Api.PRIORITIES, "Any");
+  fillSelect(form.category, Api.CATEGORIES, "Any");
+
+  async function loadStats() {
+    const s = await Api.get("/tickets/stats");
+    const cards = [["open", "Open"], ["inProgress", "In progress"], ["waitingOnCustomer", "Waiting on customer"],
+      ["slaBreached", "SLA breached"], ["unassigned", "Unassigned"]];
+    document.getElementById("stats").innerHTML = cards.map(([k, l]) =>
+      '<div class="stat" data-testid="stat-' + k + '"><div class="n">' + s[k] + '</div><div class="l">' + l + "</div></div>").join("");
+  }
+
+  async function loadTickets() {
+    const p = new URLSearchParams({ page, size: 20, sort: "createdAt,desc" });
+    ["q", "status", "priority", "category", "breached"].forEach(k => form[k].value && p.set(k, form[k].value));
+    if (form.assignee.value === "me") p.set("assigneeId", me.id);
+    if (form.assignee.value === "unassigned") p.set("unassigned", "true");
+    const res = await Api.get("/tickets?" + p);
+    document.getElementById("rows").innerHTML = res.content.map(t =>
+      '<tr class="clickable" data-testid="ticket-row" data-ticket-id="' + t.id + '" onclick="location.href=\'/ticket.html?id=' + t.id + '\'">' +
+      "<td>" + t.id + "</td>" +
+      '<td><a href="/ticket.html?id=' + t.id + '" data-testid="ticket-link">' + Api.esc(t.subject) + "</a></td>" +
+      '<td class="small">' + Api.esc(t.customerEmail) + "</td>" +
+      "<td>" + Api.badge(t.status, "ticket-status") + "</td>" +
+      "<td>" + Api.badge(t.priority, "ticket-priority") + "</td>" +
+      "<td>" + Api.badge(t.category, "ticket-category") + "</td>" +
+      '<td class="small" data-testid="ticket-assignee">' + (t.assignee ? Api.esc(t.assignee.fullName) : '<span class="muted">Unassigned</span>') + "</td>" +
+      "<td>" + Api.slaBadge(t, "ticket-sla") + "</td>" +
+      '<td class="small">' + Api.dateTime(t.createdAt) + "</td></tr>").join("");
+    document.getElementById("empty").classList.toggle("hidden", res.content.length > 0);
+    const info = res.page;
+    document.getElementById("page-info").textContent =
+      info.totalElements + " tickets · page " + (info.totalPages ? info.number + 1 : 0) + " of " + info.totalPages;
+    document.getElementById("prev").disabled = info.number <= 0;
+    document.getElementById("next").disabled = info.number + 1 >= info.totalPages;
+  }
+
+  async function refresh() {
+    try { await Promise.all([loadStats(), loadTickets()]); }
+    catch (err) { Api.showError(document.getElementById("error"), err); }
+  }
+
+  let debounce;
+  form.addEventListener("input", () => { clearTimeout(debounce); debounce = setTimeout(() => { page = 0; refresh(); }, 300); });
+  document.getElementById("clear").addEventListener("click", () => { form.reset(); page = 0; refresh(); });
+  document.getElementById("prev").addEventListener("click", () => { page--; refresh(); });
+  document.getElementById("next").addEventListener("click", () => { page++; refresh(); });
+  refresh();
+  setInterval(refresh, 30000); // keep SLA timers fresh
+</script>
+</body>
+</html>

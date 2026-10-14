@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My tickets · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<header id="app-header"></header>
+<main>
+  <div class="row" style="align-items:center; margin-bottom: 12px">
+    <h1 style="margin:0">My tickets</h1>
+    <div style="flex:0 0 auto"><a class="btn" href="/new-ticket.html" data-testid="new-ticket-button">New ticket</a></div>
+  </div>
+  <div class="card">
+    <div class="alert error hidden" id="error"></div>
+    <div class="table-wrap">
+      <table data-testid="my-tickets-table">
+        <thead><tr><th>#</th><th>Subject</th><th>Status</th><th>Last updated</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="muted hidden" id="empty" data-testid="my-tickets-empty">You haven't raised any tickets yet.</p>
+  </div>
+</main>
+<script>
+  Api.requireRole("CUSTOMER");
+  (async () => {
+    try {
+      const page = await Api.get("/tickets?size=100&sort=updatedAt,desc");
+      document.getElementById("empty").classList.toggle("hidden", page.content.length > 0);
+      document.getElementById("rows").innerHTML = page.content.map(t =>
+        '<tr class="clickable" data-testid="ticket-row" data-ticket-id="' + t.id + '" onclick="location.href=\'/ticket.html?id=' + t.id + '\'">' +
+        "<td>" + t.id + "</td>" +
+        '<td><a href="/ticket.html?id=' + t.id + '" data-testid="ticket-link">' + Api.esc(t.subject) + "</a></td>" +
+        "<td>" + Api.badge(t.status, "ticket-status") + "</td>" +
+        "<td>" + Api.dateTime(t.updatedAt) + "</td></tr>").join("");
+    } catch (err) { Api.showError(document.getElementById("error"), err); }
+  })();
+</script>
+</body>
+</html>

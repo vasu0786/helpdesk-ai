@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New ticket · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<header id="app-header"></header>
+<main style="max-width: 720px">
+  <h1>Raise a support ticket</h1>
+  <div class="card">
+    <div class="alert error hidden" id="error" data-testid="ticket-form-error"></div>
+    <form id="ticket-form" data-testid="ticket-form" novalidate>
+      <div class="field hidden" id="customer-email-field">
+        <label for="customerEmail">Customer email (raising on behalf of a customer)</label>
+        <input id="customerEmail" name="customerEmail" type="email" data-testid="ticket-customer-email">
+      </div>
+      <div class="field">
+        <label for="subject">Subject</label>
+        <input id="subject" name="subject" maxlength="200" data-testid="ticket-subject" required>
+      </div>
+      <div class="field">
+        <label for="category">Category (optional)</label>
+        <select id="category" name="category" data-testid="ticket-category">
+          <option value="">Not sure</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="description">Describe the problem</label>
+        <textarea id="description" name="description" maxlength="5000" data-testid="ticket-description" required></textarea>
+      </div>
+      <button type="submit" data-testid="ticket-submit">Submit ticket</button>
+    </form>
+  </div>
+</main>
+<script>
+  const me = Api.requireRole();
+  const form = document.getElementById("ticket-form");
+  const error = document.getElementById("error");
+  if (Api.isStaff(me)) document.getElementById("customer-email-field").classList.remove("hidden");
+  form.category.innerHTML += Api.CATEGORIES.map(c => '<option value="' + c + '">' + Api.label(c) + "</option>").join("");
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    error.classList.add("hidden");
+    const body = { subject: form.subject.value, description: form.description.value };
+    if (form.category.value) body.category = form.category.value;
+    if (Api.isStaff(me)) body.customerEmail = form.customerEmail.value;
+    form.querySelector("button").disabled = true;
+    try {
+      const t = await Api.post("/tickets", body);
+      location.href = "/ticket.html?id=" + t.id + "&created=1";
+    } catch (err) {
+      Api.showFieldErrors(form, err);
+      Api.showError(error, err);
+      form.querySelector("button").disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

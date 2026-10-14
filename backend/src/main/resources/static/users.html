@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users · HelpDesk AI</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+<header id="app-header"></header>
+<main>
+  <h1>Users</h1>
+  <div class="card">
+    <h2>Add a user</h2>
+    <div class="alert error hidden" id="create-error" data-testid="user-create-error"></div>
+    <div class="alert success hidden" id="create-ok" data-testid="user-create-success"></div>
+    <form id="user-form" class="row" data-testid="user-form" novalidate>
+      <div><label for="u-name">Full name</label><input id="u-name" name="fullName" data-testid="user-name"></div>
+      <div><label for="u-email">Email</label><input id="u-email" name="email" type="email" data-testid="user-email"></div>
+      <div><label for="u-password">Password</label><input id="u-password" name="password" type="password" data-testid="user-password"></div>
+      <div><label for="u-role">Role</label>
+        <select id="u-role" name="role" data-testid="user-role">
+          <option value="AGENT">Agent</option><option value="ADMIN">Admin</option><option value="CUSTOMER">Customer</option>
+        </select></div>
+      <div style="flex:0 0 auto"><button type="submit" data-testid="user-submit">Add user</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="alert error hidden" id="error"></div>
+    <div class="table-wrap">
+      <table data-testid="users-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script>
+  const me = Api.requireRole("ADMIN");
+  const form = document.getElementById("user-form");
+
+  async function load() {
+    try {
+      const users = await Api.get("/users");
+      document.getElementById("rows").innerHTML = users.map(u =>
+        '<tr data-testid="user-row" data-user-id="' + u.id + '">' +
+        "<td>" + Api.esc(u.fullName) + "</td><td>" + Api.esc(u.email) + "</td>" +
+        "<td>" + Api.badge(u.role, "user-role-badge") + "</td>" +
+        '<td data-testid="user-active">' + (u.active ? "Active" : '<span class="muted">Deactivated</span>') + "</td>" +
+        '<td class="small">' + Api.dateTime(u.createdAt) + "</td>" +
+        "<td>" + (u.id === me.id ? "" :
+          '<button class="secondary" data-testid="user-toggle-active" data-id="' + u.id + '" data-active="' + u.active + '">' +
+          (u.active ? "Deactivate" : "Activate") + "</button>") + "</td></tr>").join("");
+    } catch (err) { Api.showError(document.getElementById("error"), err); }
+  }
+
+  document.getElementById("rows").addEventListener("click", async e => {
+    const btn = e.target.closest("button[data-id]");
+    if (!btn) return;
+    try { await Api.patch("/users/" + btn.dataset.id, { active: btn.dataset.active !== "true" }); load(); }
+    catch (err) { Api.showError(document.getElementById("error"), err); }
+  });
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const err = document.getElementById("create-error"), ok = document.getElementById("create-ok");
+    err.classList.add("hidden"); ok.classList.add("hidden");
+    try {
+      const u = await Api.post("/users", { fullName: form.fullName.value, email: form.email.value,
+        password: form.password.value, role: form.role.value });
+      ok.textContent = "Created " + u.email + " (" + u.role.toLowerCase() + ").";
+      ok.classList.remove("hidden");
+      form.reset();
+      form.querySelectorAll(".field-error").forEach(x => x.remove());
+      load();
+    } catch (e2) { Api.showFieldErrors(form, e2); Api.showError(err, e2); }
+  });
+
+  if (me) load();
+</script>
+</body>
+</html>

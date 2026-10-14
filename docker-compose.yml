@@ -1,0 +1,37 @@
+# Default:            docker compose up -d                      -> Postgres only (run the app with Maven)
+# App in Docker too:  docker compose --profile app up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: helpdesk-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-helpdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-helpdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-helpdesk}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    profiles: ["app"]
+    build: ./backend
+    container_name: helpdesk-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-helpdesk}
+      DB_USER: ${POSTGRES_USER:-helpdesk}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
+      JWT_SECRET: ${JWT_SECRET:-change-me-this-is-a-dev-only-secret-key-123456}
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

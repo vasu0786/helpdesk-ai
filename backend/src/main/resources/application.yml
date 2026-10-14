@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: helpdesk-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/helpdesk}
+    username: ${DB_USER:helpdesk}
+    password: ${DB_PASSWORD:helpdesk}
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Flyway owns the schema; Hibernate only checks it matches
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+helpdesk:
+  jwt:
+    # Must be at least 32 characters. Override in any shared environment.
+    secret: ${JWT_SECRET:change-me-this-is-a-dev-only-secret-key-123456}
+    ttl: ${JWT_TTL:PT8H}
+  sla:
+    # Time allowed to resolve a ticket, by priority (ISO-8601 durations).
+    # For testing breaches quickly, run with e.g. SLA_URGENT=PT1M.
+    urgent: ${SLA_URGENT:PT4H}
+    high: ${SLA_HIGH:PT8H}
+    medium: ${SLA_MEDIUM:PT24H}
+    low: ${SLA_LOW:PT72H}
+    check-interval: ${SLA_CHECK_INTERVAL:PT1M}
+  seed:
+    # Creates demo users on startup if they don't exist.
+    enabled: ${SEED_DEMO_DATA:true}
