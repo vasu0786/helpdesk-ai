@@ -1,0 +1,18 @@
+name: Regression suite
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the code
+        uses: actions/checkout@v4
+
+      - name: Say hello
+        run: echo "The pipeline started for commit ${{ github.sha }}"
+
+      - name: Show the project folders
+        run: ls -la
