@@ -15,11 +15,11 @@
         </packages>
     </test>
 
-    <!-- Uncomment when the first UI test class exists in ui/test
+     <!-- Uncomment when the first UI test class exists in ui/test -->
     <test name="UI">
         <packages>
             <package name="com.helpdesk.tests.ui.test"/>
         </packages>
     </test>
-    -->
+    
 </suite>
