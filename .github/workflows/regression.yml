@@ -1,0 +1,102 @@
+name: Regression suite
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch: # Allows manual trigger from GitHub UI if needed
+
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download the code
+        uses: actions/checkout@v5
+
+      - name: Install Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: |
+            backend/pom.xml
+            tests/pom.xml
+
+      - name: Start PostgreSQL database
+        run: |
+          docker compose up -d postgres --wait
+
+      - name: Build backend application
+        working-directory: backend
+        run: |
+          mvn -B package -DskipTests
+
+      - name: Start backend application
+        run: |
+          java -jar backend/target/helpdesk-backend-*.jar > backend.log 2>&1 &
+          echo "Waiting for backend to become healthy..."
+          for i in {1..30}; do
+            if curl -s -f http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Backend is UP and ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Backend failed to start. Showing logs:"
+              cat backend.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Run API and UI tests
+        working-directory: tests
+        run: |
+          mvn -B test -Dheadless=true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-test-reports
+          path: tests/target/surefire-reports/
+          if-no-files-found: ignore
+
+      - name: Upload UI failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-failure-screenshots
+          path: tests/target/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: backend.log
+          if-no-files-found: ignore
+
+      - name: Upload test failures JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failures
+          path: tests/target/test-failures.json
+          if-no-files-found: ignore
+      
+      - name: Notify n8n of test failures
+        if: failure()
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+        run: |
+          curl -s -X POST "$N8N_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repo": "${{ github.repository }}",
+              "run_id": "${{ github.run_id }}",
+              "sha": "${{ github.sha }}",
+              "branch": "${{ github.ref_name }}",
+              "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'

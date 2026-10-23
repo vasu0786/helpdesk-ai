@@ -3,11 +3,15 @@
 A customer support ticketing system. Customers raise tickets on the web, and agents work them on a
 dashboard with an SLA timer.
 
-This repo is a QA/SDET portfolio project: the app is the system under test, and `tests/` holds the
-test framework (API and UI).
+This repo is a QA/SDET portfolio project:
 
-**Planned for later** (after the test suite): AI triage (classification, priority, suggested replies)
-and n8n automation (email → ticket, SLA breach alerts).
+- the **app** (`backend/`) is the system under test
+- **`tests/`** holds the test framework: 236 API and UI tests with TestNG, Rest Assured and Selenium
+- **GitHub Actions** runs the full regression suite on every push to `dev`
+- failed runs are **triaged automatically**: an n8n workflow reads the failures and files them in
+  Jira, as new bugs, comments on existing bugs, or one task for environment problems
+
+See [Regression failure triage](#regression-failure-triage-ci--n8n--jira) for how that works.
 
 ## Tech stack
 
@@ -18,12 +22,16 @@ and n8n automation (email → ticket, SLA breach alerts).
 | Frontend | Plain HTML/CSS/JavaScript served by the backend (no build step) |
 | API docs | Swagger UI (springdoc-openapi) |
 | Containers | Docker + Docker Compose |
-| Tests | TestNG, Rest Assured, Selenium 4 (in `tests/`) |
+| Tests | TestNG, Rest Assured, Selenium 4, Jackson (in `tests/`) |
+| CI | GitHub Actions |
+| Failure triage | n8n, Jira Cloud |
 
 ## Project structure
 
 ```
 helpdesk-ai/
+├── .github/workflows/
+│   └── regression.yml            CI: runs the suite, uploads results, notifies n8n on failure
 ├── backend/                      Spring Boot app (API + frontend)
 │   └── src/main/
 │       ├── java/com/helpdesk/
@@ -37,20 +45,22 @@ helpdesk-ai/
 │           ├── application.yml   all settings (DB, JWT, SLA times…)
 │           ├── db/migration/     Flyway SQL (database schema)
 │           └── static/           frontend pages, CSS, JS
-├── tests/                        test project (you write the tests here)
+├── tests/                        test framework (API + UI)
 │   ├── pom.xml                   TestNG, Rest Assured, Selenium, Jackson
-│   ├── testng.xml                suite file
+│   ├── testng.xml                suite file (API and UI blocks, failure listener)
 │   └── src/test/
 │       ├── java/com/helpdesk/tests/
-│       │   ├── base/             base classes (setup, specs, driver)
-│       │   ├── api/              API tests
-│       │   ├── ui/pages/         Page Objects
-│       │   ├── ui/               UI tests
-│       │   └── utils/            helpers
+│       │   ├── api/              base specs, endpoints, POJOs, utils (config, DB), API tests
+│       │   ├── ui/               driver factory, base test, Page Objects, UI tests
+│       │   └── listeners/        FailureReportListener: writes test-failures.json
 │       └── resources/
+│           ├── config.properties URLs, demo accounts, browser settings
 │           ├── schemas/          JSON schemas for response validation
 │           └── testdata/         test data files
-├── perf/                         JMeter test plans
+├── n8n/
+│   └── regression-triage.json    the n8n triage workflow (import into n8n)
+├── docs/                         API and UI test case sheets (Excel)
+├── perf/                         JMeter test plans (planned)
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -85,6 +95,93 @@ click **Authorize**, and paste it.
 - **Everything in Docker:** `docker compose --profile app up -d --build`
 - **Fast SLA breaches for testing:** `SLA_MEDIUM=PT2M SLA_CHECK_INTERVAL=PT10S mvn spring-boot:run`
 - **Reset the database:** `docker compose down -v && docker compose up -d`
+
+## Running the tests
+
+With the database and the app running:
+
+```bash
+cd tests
+mvn test -Dheadless=true
+```
+
+- This runs `testng.xml`: the API block, then the UI block (Chrome by default; set `browser` in
+  `config.properties` to `firefox` or `edge`).
+- The SLA tests need the app started with short SLA times, so they're excluded from the suite. Run
+  them separately: `mvn test -Dtest=SlaApiTest`
+- Results: `tests/target/surefire-reports/` (TestNG HTML report and XML), plus
+  `tests/target/test-failures.json` from the failure listener.
+
+## Regression failure triage (CI → n8n → Jira)
+
+When the regression suite fails, nobody has to read the logs to work out what broke. Each failure is
+sorted and filed in Jira automatically.
+
+```
+push to dev
+   │
+   ▼
+GitHub Actions (regression.yml)
+   starts PostgreSQL + the app, runs all tests
+   FailureReportListener writes test-failures.json
+   uploads it as a run artifact
+   tests failed? → POST run details to the n8n webhook
+   │
+   ▼
+n8n (n8n/regression-triage.json)
+   downloads test-failures.json from the GitHub API
+   splits it into one item per failure
+   │
+   ├── environment error? (connection refused, browser didn't start, 502/503/504…)
+   │      └──► one Jira Task per run, listing every affected test
+   │
+   └── everything else
+          ├── open bug with this fingerprint exists? ──► comment "failed again in run …"
+          └── no open bug ─────────────────────────────► new Jira Bug
+```
+
+### The pieces
+
+| Piece | What it does |
+|---|---|
+| `tests/.../listeners/FailureReportListener.java` | TestNG listener. On each failed test it records the class, method, parameters, exception type, message and the stack frames from project code, then writes them to `target/test-failures.json` |
+| `.github/workflows/regression.yml` | Runs the suite on every push to `dev`. Uploads the surefire reports, `test-failures.json`, the backend log and UI screenshots as artifacts. On failure, sends the run ID, commit and branch to n8n |
+| `n8n/regression-triage.json` | Downloads the failures, separates environment errors from real failures, checks Jira for an existing bug, then comments or creates |
+
+### What a Jira bug contains
+
+- **Summary:** `[Regression] UserApiTest.fullNameCannotBeOnlySpaces – AssertionError`
+- **Labels:** the fingerprint, plus `auto-triage`
+- **Description:** test name, data-driven parameters, error message, the failing line in the test
+  code, and links to the GitHub run and commit
+
+### Design decisions
+
+- **Fingerprint = test class + method name**, for example `UserApiTest.fullNameCannotBeOnlySpaces`.
+  It leaves out data-driven parameters, which can contain object IDs that change on every run, so the
+  same failure always gets the same fingerprint.
+- **Jira is the only memory.** Duplicates are found by searching Jira for an open bug with the
+  fingerprint label. n8n keeps no list of its own, so when a bug is closed and the test fails again,
+  that's correctly reported as a new bug (a regression) and not ignored.
+- **One item per fingerprint per run.** A data-driven test can fail several times in one run; it
+  still produces one bug.
+- **Environment problems are not bugs.** When the backend is down, every test fails for the same
+  reason. Those failures are grouped into a single Jira Task for whoever owns the pipeline, so
+  developers only see real defects.
+- **Rules first.** Environment errors are recognised by exception names and messages: free, instant
+  and predictable.
+- **Least privilege.** The GitHub token can only read Actions data in this one repository. The n8n
+  webhook URL is stored as a GitHub secret, not in the workflow file. No credentials are in this repo.
+
+### Running the triage yourself
+
+1. Import `n8n/regression-triage.json` into n8n (**⋯ → Import from file**).
+2. In n8n, create the credentials the nodes refer to:
+   - **github token**: Header Auth, `Authorization: Bearer <fine-grained token with Actions: read>`
+   - **Jira SW Cloud account**: your Atlassian email, an API token and your Jira site URL
+3. Change the Jira site URL and project key in the Jira nodes to your own.
+4. Make n8n reachable from GitHub (for example `ngrok http 5678`) and **publish** the workflow.
+5. In the GitHub repo, add the secret `N8N_WEBHOOK_URL` = `https://<your-public-n8n>/webhook/regression-failed`.
 
 ## Frontend pages
 

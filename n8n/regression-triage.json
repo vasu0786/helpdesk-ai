@@ -1,0 +1,526 @@
+{
+  "name": "Regression Failure Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "regression-failed",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        -512
+      ],
+      "id": "cda68cdb-2116-4a05-a173-ba14b1dfdd46",
+      "name": "Webhook",
+      "webhookId": "e9e17d1e-d2f5-46b9-98e6-7408869050d0"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.artifacts.find(a => a.name === 'test-failures').archive_download_url }}\n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        192,
+        -16
+      ],
+      "id": "b35eda50-69e9-40d2-b096-7563fcafaafc",
+      "name": "Get Download Link",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "V5Mcea8RtaWvXMM6",
+          "name": "github token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.headers.location }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        -16
+      ],
+      "id": "536417c6-e143-4420-829a-d443113a4d17",
+      "name": "Download Report"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.compression",
+      "typeVersion": 1.1,
+      "position": [
+        736,
+        -16
+      ],
+      "id": "761c12be-822f-4a90-948d-44602abdda8a",
+      "name": "unzip report"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "file_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        -16
+      ],
+      "id": "fd8a97e9-201d-435c-ab46-f174c001e7f2",
+      "name": "Read failures JSON"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        448
+      ],
+      "id": "a7139b09-41c7-4958-a243-c743ab09b1e1",
+      "name": "Split into failures"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "81e6010e-5166-4931-96eb-3f9d87919158",
+                    "leftValue": "={{ $json.errorType }} {{ $json.message }}",
+                    "rightValue": "ConnectException|ConnectTimeoutException|NoHttpResponseException|SocketTimeoutException|SocketException|UnknownHostException|NoRouteToHostException|Connection refused|Connection reset|SessionNotCreatedException|NoSuchSessionException|UnreachableBrowserException|ERR_CONNECTION_REFUSED|ERR_NAME_NOT_RESOLVED|chrome not reachable|but was <50[234]>|The connection attempt failed|config\\.properties",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "environment"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "needs AI"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1552,
+        448
+      ],
+      "id": "98baf1dd-064f-4e28-82cc-dedfabc5326b",
+      "name": "Rule-based check"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "=fingerprint",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        720
+      ],
+      "id": "5c969341-cb15-480d-bce7-b080bfd5221e",
+      "name": "One per fingerprint"
+    },
+    {
+      "parameters": {
+        "resource": "issueComment",
+        "issueKey": "={{ $json.issues[0].key }}\n",
+        "comment": "=Failed again in regression run {{ $('Webhook').first().json.body.run_id }}\nCommit: {{ $('Webhook').first().json.body.sha }}\nBranch: {{ $('Webhook').first().json.body.branch }}\nRun: {{ $('Webhook').first().json.body.run_url }}\n\nError: {{ $('One per fingerprint').item.json.errorType }}\n{{ $('One per fingerprint').item.json.message }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        2704,
+        704
+      ],
+      "id": "133b6143-b8c8-4541-84fa-59f3b9293f66",
+      "name": "Add comment to existing bug",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "xN1GfmD3i2ikZUWl",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://vasudhaphul.atlassian.net/rest/api/3/search/jql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "jiraSoftwareCloudApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = \"HelpDesk.ai - Testing\" AND labels = \"{{ $json.fingerprint }}\" AND statusCategory != Done"
+            },
+            {
+              "name": "fields",
+              "value": "summary"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2112,
+        720
+      ],
+      "id": "2ae277a3-8011-42b0-90f2-604ba11abd6a",
+      "name": "Find existing bug1",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "xN1GfmD3i2ikZUWl",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "failures",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        432
+      ],
+      "id": "3d481d3d-1add-49ad-ae38-44bc82011da2",
+      "name": "Combine environment failures."
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "value": "10001",
+          "mode": "list",
+          "cachedResultName": "HelpDesk.ai - Testing"
+        },
+        "issueType": {
+          "__rl": true,
+          "value": "10008",
+          "mode": "list",
+          "cachedResultName": "Task"
+        },
+        "summary": "=[Environment] {{ $json.failures.length }} tests could not run in regression run {{ $('Webhook').first().json.body.run_id }}\n",
+        "additionalFields": {
+          "description": "=The regression run hit an environment or setup problem, not an application bug.\n\nErrors seen:\n{{ [...new Set($json.failures.map(f => f.errorType))].join('\\n') }}\n\nAffected tests ({{ $json.failures.length }}):\n{{ $json.failures.map(f => '- ' + f.fingerprint).join('\\n') }}\n\nFirst error message:\n{{ $json.failures[0].message }}\n\nRun: {{ $('Webhook').first().json.body.run_url }}\nCommit: {{ $('Webhook').first().json.body.sha }}\nBranch: {{ $('Webhook').first().json.body.branch }}\nCheck the backend-log artifact on the run page.\n",
+          "labels": [
+            "auto-triage"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        432
+      ],
+      "id": "24410cfd-a178-4076-8c6b-7ac3337c34cb",
+      "name": "Create environment task",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "xN1GfmD3i2ikZUWl",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.body.repo }}/actions/runs/{{ $json.body.run_id }}/artifacts\n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        192,
+        -304
+      ],
+      "id": "62bc11e8-ce82-4496-90f6-ca949b428044",
+      "name": "List artifacts",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "V5Mcea8RtaWvXMM6",
+          "name": "github token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vasudhaphul.atlassian.net/rest/api/2/issue",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "jiraSoftwareCloudApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  fields: {\n    project: { key: 'KAN' },\n    issuetype: { name: 'Bug' },\n    summary: '[Regression] ' + $('One per fingerprint').item.json.fingerprint + ' – ' + $('One per fingerprint').item.json.errorType.split('.').pop(),\n    labels: [ $('One per fingerprint').item.json.fingerprint, 'auto-triage' ],\n    description: [\n      'Test: ' + $('One per fingerprint').item.json.className + '.' + $('One per fingerprint').item.json.methodName,\n      'Parameters: ' + $('One per fingerprint').item.json.parameters,\n      '',\n      'Error: ' + $('One per fingerprint').item.json.errorType,\n      $('One per fingerprint').item.json.message,\n      '',\n      'Stack trace (project frames):',\n      $('One per fingerprint').item.json.stackTrace.join('\\n'),\n      '',\n      'Run: ' + $('Webhook').first().json.body.run_url,\n      'Commit: ' + $('Webhook').first().json.body.sha,\n      'Branch: ' + $('Webhook').first().json.body.branch\n    ].join('\\n')\n  }\n}) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2432,
+        1008
+      ],
+      "id": "bbe01142-80c4-4a24-883b-20b255eae957",
+      "name": "Create Bug",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "xN1GfmD3i2ikZUWl",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "91c7a3b3-3c3d-4176-9b68-8b96b62284a5",
+              "leftValue": "={{ $json.issues.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2400,
+        720
+      ],
+      "id": "15fb31b8-1e1f-4b4a-a068-a97ccf54b915",
+      "name": "Bug Exist?"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "List artifacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Download Link": {
+      "main": [
+        [
+          {
+            "node": "Download Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Report": {
+      "main": [
+        [
+          {
+            "node": "unzip report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "unzip report": {
+      "main": [
+        [
+          {
+            "node": "Read failures JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read failures JSON": {
+      "main": [
+        [
+          {
+            "node": "Split into failures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split into failures": {
+      "main": [
+        [
+          {
+            "node": "Rule-based check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rule-based check": {
+      "main": [
+        [
+          {
+            "node": "Combine environment failures.",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "One per fingerprint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per fingerprint": {
+      "main": [
+        [
+          {
+            "node": "Find existing bug1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find existing bug1": {
+      "main": [
+        [
+          {
+            "node": "Bug Exist?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine environment failures.": {
+      "main": [
+        [
+          {
+            "node": "Create environment task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List artifacts": {
+      "main": [
+        [
+          {
+            "node": "Get Download Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bug Exist?": {
+      "main": [
+        [
+          {
+            "node": "Add comment to existing bug",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Bug",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0c0ffbab-f6bc-486f-a007-9ba75f75b0c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "70767136b124dd61cf9ddc6da135de7afb4c6175863bdcfbbed508ace2fc9f6d"
+  },
+  "nodeGroups": [],
+  "id": "Zrvbjcu3IkOjYEjH",
+  "tags": []
+}

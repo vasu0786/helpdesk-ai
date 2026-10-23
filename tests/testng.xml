@@ -4,6 +4,10 @@
     <!-- All API tests except the SLA ones.
          SLA tests need the app started with short settings, so run them separately:
          mvn test -Dtest=SlaApiTest -->
+    <listeners>
+        <listener class-name="com.helpdesk.tests.listeners.FailureReportListener"/>
+    </listeners>
+
     <test name="API">
         <groups>
             <run>
@@ -15,11 +19,11 @@
         </packages>
     </test>
 
-    <!-- Uncomment when the first UI test class exists in ui/test
+     <!-- Uncomment when the first UI test class exists in ui/test -->
     <test name="UI">
         <packages>
             <package name="com.helpdesk.tests.ui.test"/>
         </packages>
     </test>
-    -->
+    
 </suite>
