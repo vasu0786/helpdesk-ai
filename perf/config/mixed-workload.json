@@ -1,0 +1,44 @@
+
+
+
+{
+  "TKS-003": {
+    "scenarios": {
+      "customers_create": {
+        "executor": "ramping-vus",
+        "exec": "customerCreates",
+        "stages": [{ "duration": "1m", "target": 14 }, { "duration": "3m", "target": 14 }, { "duration": "30s", "target": 0 }]
+      },
+      "agents_stats": {
+        "executor": "ramping-vus",
+        "exec": "agentStats",
+        "stages": [{ "duration": "1m", "target": 6 }, { "duration": "3m", "target": 6 }, { "duration": "30s", "target": 0 }]
+      }
+    },
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets/stats}": ["p(95)<700"],
+      "http_req_duration{name:POST /tickets}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "CMT-004": {
+    "scenarios": {
+      "customers_comment": {
+        "executor": "ramping-vus",
+        "exec": "customerComments",
+        "stages": [{ "duration": "1m", "target": 10 }, { "duration": "3m", "target": 10 }, { "duration": "30s", "target": 0 }]
+      },
+      "agents_comment": {
+        "executor": "ramping-vus",
+        "exec": "agentComments",
+        "stages": [{ "duration": "1m", "target": 10 }, { "duration": "3m", "target": 10 }, { "duration": "30s", "target": 0 }]
+      }
+    },
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:POST /tickets/{id}/comments}": ["p(95)<500"],
+      "checks": ["rate==1"]
+    }
+  }
+}

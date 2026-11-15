@@ -1,0 +1,24 @@
+{
+  "smoke": {
+    "stages": [{ "duration": "30s", "target": 1 }],
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{kind:wrong}": ["p(95)<500"],
+      "http_req_duration{kind:empty}": ["p(95)<50"],
+      "checks": ["rate==1"]
+    }
+  },
+  "load": {
+    "stages": [
+      { "duration": "1m", "target": 20 },
+      { "duration": "3m", "target": 20 },
+      { "duration": "30s", "target": 0 }
+    ],
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{kind:wrong}": ["p(95)<500"],
+      "http_req_duration{kind:empty}": ["p(95)<50"],
+      "checks": ["rate==1"]
+    }
+  }
+}

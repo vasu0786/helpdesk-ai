@@ -1,0 +1,7 @@
+{
+  "smoke":  { "stages": [], "thresholds": {} },
+  "load":   { "stages": [], "thresholds": {} },
+  "stress": { "stages": [], "thresholds": {} },
+  "spike":  { "stages": [], "thresholds": {} },
+  "soak":   { "stages": [], "thresholds": {} }
+}

@@ -1,0 +1,74 @@
+{
+  "TKC-003": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:POST /tickets}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKS-001": {
+    "load": "LP-01",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:GET /tickets/stats}": ["p(95)<300"],
+      "checks": ["rate==1"]
+    }
+  },
+  "TKS-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets/stats}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKU-001": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:PATCH /tickets/{id}}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKU-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:PATCH /tickets/{id}}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKU-003": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:PATCH /tickets/{id}}": ["p(95)<800"],
+      "checks": ["rate==1"]
+    }
+  },
+  "TKU-004": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:PATCH /tickets/{id}}": ["p(95)<300"],
+      "checks": ["rate==1"]
+    }
+  },
+  "TKD-001": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:DELETE /tickets/{id}}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "CMT-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:POST /tickets/{id}/comments}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  }
+}
