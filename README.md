@@ -60,7 +60,8 @@ helpdesk-ai/
 ├── n8n/
 │   └── regression-triage.json    the n8n triage workflow (import into n8n)
 ├── docs/                         API and UI test case sheets (Excel)
-├── perf/                         JMeter test plans (planned)
+├── perf/                         k6 performance tests (login, register, tickets)
+plans (planned)
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -255,3 +256,14 @@ CLOSED ◄─────────────┘            (CLOSED is final
 
 **Categories:** BILLING, BUG, FEATURE_REQUEST, ACCOUNT, OTHER. The customer can pick one when raising a
 ticket (optional), and agents can change it.
+
+
+n8n in chrome: 
+http://localhost:5678
+
+ngrok :
+ngrok http 5678
+
+
+for running test locally
+java -jar backend/target/helpdesk-backend-*.jar
