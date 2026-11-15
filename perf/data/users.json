@@ -1,0 +1,6 @@
+[
+  { "email": "admin@helpdesk.local",    "password": "Admin@123" },
+  { "email": "agent1@helpdesk.local",   "password": "Agent@123" },
+  { "email": "agent2@helpdesk.local",   "password": "Agent@123" },
+  { "email": "customer@helpdesk.local", "password": "Customer@123" }
+]

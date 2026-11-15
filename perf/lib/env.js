@@ -1,0 +1,3 @@
+// Settings read from the environment. Pass them with: k6 run -e BASE_URL=... -e PROFILE=...
+export const BASE_URL = __ENV.BASE_URL || "http://localhost:8080/api";
+export const PROFILE = __ENV.PROFILE || "smoke";

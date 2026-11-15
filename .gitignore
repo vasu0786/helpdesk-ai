@@ -9,3 +9,9 @@ target/
 allure-results/
 allure-report/
 test-output/
+
+# k6 result files
+perf/results/*
+!perf/results/.gitkeep
+perf/data/perf-users.json
+

@@ -1,0 +1,22 @@
+[
+  { "subject": "Cannot download my invoice",          "description": "The download button on the billing page does nothing.",        "keyword": "invoice" },
+  { "subject": "Charged twice this month",            "description": "My card shows two charges for the same subscription.",         "keyword": "charged" },
+  { "subject": "Refund not received",                 "description": "I cancelled two weeks ago and the refund has not arrived.",   "keyword": "refund" },
+  { "subject": "Password reset email never arrives",  "description": "I requested a reset three times but got no email.",           "keyword": "password" },
+  { "subject": "Account locked after login attempts", "description": "My account says locked and I cannot sign in.",                "keyword": "locked" },
+  { "subject": "Change the email on my account",      "description": "I need to move my account to a new work email.",               "keyword": "email" },
+  { "subject": "Dashboard page loads slowly",         "description": "The dashboard takes more than ten seconds to open.",          "keyword": "dashboard" },
+  { "subject": "Export to CSV is broken",             "description": "Export downloads an empty file with only the header row.",    "keyword": "export" },
+  { "subject": "Error 500 when saving settings",      "description": "Saving notification settings shows a server error.",          "keyword": "settings" },
+  { "subject": "Mobile app crashes on start",         "description": "The app closes right after the splash screen on Android.",    "keyword": "mobile" },
+  { "subject": "Search returns no results",           "description": "Searching for an existing order number finds nothing.",       "keyword": "search" },
+  { "subject": "Attachment upload fails",             "description": "Uploading a 2 MB PDF fails with a timeout.",                  "keyword": "upload" },
+  { "subject": "Please add dark mode",                "description": "A dark theme would help when working at night.",              "keyword": "dark" },
+  { "subject": "Request for bulk edit feature",       "description": "We need to change the status of many items at once.",         "keyword": "bulk" },
+  { "subject": "Integration with Slack",              "description": "Send ticket updates to a Slack channel.",                     "keyword": "slack" },
+  { "subject": "Wrong timezone in reports",           "description": "Reports show UTC times instead of my local timezone.",        "keyword": "timezone" },
+  { "subject": "Cannot add a team member",            "description": "Inviting a colleague shows that the seat limit is reached.",  "keyword": "member" },
+  { "subject": "Notification emails go to spam",      "description": "All notification emails land in the spam folder.",            "keyword": "spam" },
+  { "subject": "Question about pricing plans",        "description": "What is the difference between the team and business plan?", "keyword": "pricing" },
+  { "subject": "Delete my account and data",          "description": "Please remove my account and all personal data.",             "keyword": "delete" }
+]

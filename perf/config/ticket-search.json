@@ -1,0 +1,86 @@
+{
+  "TKL-001": {
+    "load": "LP-01",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<300"],
+      "checks": ["rate==1"]
+    }
+  },
+  "TKL-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<500"],
+      "checks{check:only my own tickets}": ["rate==1"]
+    }
+  },
+  "TKL-003": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-004": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{filters:status}": ["p(95)<500"],
+      "http_req_duration{filters:status+priority}": ["p(95)<500"],
+      "http_req_duration{filters:status+priority+category}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-005": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<700"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-006": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<1000"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-007": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{kind:deep}": ["p(95)<700"],
+      "http_req_duration{kind:first}": ["p(95)<700"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-008": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<800"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-009": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{kind:unassigned}": ["p(95)<500"],
+      "http_req_duration{kind:breached}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "TKL-010": {
+    "load": "LP-03",
+    "thresholds": {
+      "http_req_failed": ["rate<0.05"],
+      "http_req_duration{name:GET /tickets}": ["p(95)<2000"],
+      "checks": ["rate>0.95"]
+    }
+  }
+}
