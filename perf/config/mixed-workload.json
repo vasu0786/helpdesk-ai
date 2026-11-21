@@ -40,5 +40,62 @@
       "http_req_duration{name:POST /tickets/{id}/comments}": ["p(95)<500"],
       "checks": ["rate==1"]
     }
+  },
+  "JNY-003": {
+    "scenarios": {
+      "customers": {"executor": "ramping-vus", "exec": "customers", "stages": [{"duration": "1m", "target": 14}, {"duration": "3m", "target": 14}, {"duration": "30s", "target": 0}]},
+      "agents": {"executor": "ramping-vus", "exec": "agents", "stages": [{"duration": "1m", "target": 4}, {"duration": "3m", "target": 4}, {"duration": "30s", "target": 0}]},
+      "logins": {"executor": "ramping-vus", "exec": "logins", "stages": [{"duration": "1m", "target": 2}, {"duration": "3m", "target": 2}, {"duration": "30s", "target": 0}]}
+    },
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{scenario:customers}": ["p(95)<500"],
+      "http_req_duration{scenario:agents}": ["p(95)<500"],
+      "http_req_duration{scenario:logins}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "JNY-004": {
+    "scenarios": {
+      "customers": {"executor": "ramping-vus", "exec": "customers", "stages": [{"duration": "1m", "target": 35}, {"duration": "1m", "target": 70}, {"duration": "1m", "target": 140}, {"duration": "1m", "target": 0}]},
+      "agents": {"executor": "ramping-vus", "exec": "agents", "stages": [{"duration": "1m", "target": 10}, {"duration": "1m", "target": 20}, {"duration": "1m", "target": 40}, {"duration": "1m", "target": 0}]},
+      "logins": {"executor": "ramping-vus", "exec": "logins", "stages": [{"duration": "1m", "target": 5}, {"duration": "1m", "target": 10}, {"duration": "1m", "target": 20}, {"duration": "1m", "target": 0}]}
+    },
+    "thresholds": {
+      "http_req_failed": ["rate<0.05"],
+      "http_req_duration": ["p(95)<2000"],
+      "http_reqs{status:500}": ["count==0"],
+      "http_reqs{status:503}": ["count==0"]
+    }
+  },
+  "JNY-005": {
+    "scenarios": {
+      "customers": {"executor": "ramping-vus", "exec": "customers", "stages": [{"duration": "2m", "target": 14}, {"duration": "30m", "target": 14}, {"duration": "1m", "target": 0}]},
+      "agents": {"executor": "ramping-vus", "exec": "agents", "stages": [{"duration": "2m", "target": 4}, {"duration": "30m", "target": 4}, {"duration": "1m", "target": 0}]},
+      "logins": {"executor": "ramping-vus", "exec": "logins", "stages": [{"duration": "2m", "target": 2}, {"duration": "30m", "target": 2}, {"duration": "1m", "target": 0}]}
+    },
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "JNY-006": {
+    "scenarios": {
+      "breakpoint": {"executor": "ramping-arrival-rate", "exec": "breakpoint", "startRate": 10, "timeUnit": "1s", "preAllocatedVUs": 50, "maxVUs": 500, "stages": [{"duration": "10m", "target": 500}]}
+    },
+    "thresholds": {
+      "http_req_failed": [{"threshold": "rate<0.05", "abortOnFail": true, "delayAbortEval": "10s"}]
+    }
+  },
+  "JNY-007": {
+    "scenarios": {
+      "smoke": {"executor": "constant-vus", "exec": "everyone", "vus": 1, "duration": "30s"}
+    },
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration": ["p(95)<300"],
+      "checks": ["rate==1"]
+    }
   }
 }

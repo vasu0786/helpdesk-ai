@@ -5,7 +5,8 @@
 // PERF-TKS-001  Dashboard stats smoke                  PERF-TKU-003  Many agents update ONE ticket
 // PERF-TKS-002  Dashboard stats under load             PERF-TKU-004  CLOSED -> OPEN: 409
 // PERF-TKU-001  OPEN -> IN_PROGRESS                    PERF-TKD-001  Admin deletes tickets with comments
-// PERF-CMT-002  Agent public reply / internal note
+// PERF-CMT-002  Agent public reply / internal note       PERF-JNY-002  Whole agent journey (lib/journeys.js)
+//                                                       needs seeded tickets: k6 run -e COUNT=2000 scripts/seed-tickets.js
 import http from "k6/http";
 import { check, sleep } from "k6";
 import { SharedArray } from "k6/data";
@@ -13,6 +14,7 @@ import { Rate } from "k6/metrics";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.1.0/index.js";
 import { login } from "../lib/auth.js";
 import { createTicket, ticketStats, getTicket, updateTicket, deleteTicket, addComment } from "../lib/tickets.js";
+import { agentJourney, requireOpenTickets } from "../lib/journeys.js";
 import { PROFILE } from "../lib/env.js";
 
 // ---------- INIT ----------
@@ -66,6 +68,7 @@ export function setup() {
     if (PROFILE === "TKD-001") {
         data.adminToken = login("admin@helpdesk.local", "Admin@123").json("token");
     }
+    if (PROFILE === "JNY-002") requireOpenTickets();
     if (PROFILE === "CMT-002") {
         // One ticket per VU
         data.ids = [];
@@ -169,6 +172,7 @@ const TESTS = {
     "TKU-004": invalidTransition,
     "TKD-001": deleteWithComments,
     "CMT-002": agentReply,
+    "JNY-002": agentJourney,
 };
 
 // ---------- VU CODE ----------

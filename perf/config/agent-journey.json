@@ -70,5 +70,18 @@
       "http_req_duration{name:POST /tickets/{id}/comments}": ["p(95)<500"],
       "checks": ["rate>0.99"]
     }
+  },
+  "JNY-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "group_duration{group:::Login}": ["p(95)<500"],
+      "group_duration{group:::Dashboard stats}": ["p(95)<500"],
+      "group_duration{group:::Filter tickets}": ["p(95)<500"],
+      "group_duration{group:::Open ticket}": ["p(95)<500"],
+      "group_duration{group:::Update ticket}": ["p(95)<500"],
+      "group_duration{group:::Reply}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
   }
 }

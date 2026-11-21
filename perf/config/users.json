@@ -1,7 +1,34 @@
 {
-  "smoke":  { "stages": [], "thresholds": {} },
-  "load":   { "stages": [], "thresholds": {} },
-  "stress": { "stages": [], "thresholds": {} },
-  "spike":  { "stages": [], "thresholds": {} },
-  "soak":   { "stages": [], "thresholds": {} }
+  "USR-001": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:GET /users}": ["p(95)<500"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "USR-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:POST /users}": ["p(95)<600"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "USR-003": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{name:PATCH /users/{id}}": ["p(95)<400"],
+      "checks": ["rate>0.99"]
+    }
+  },
+  "USR-004": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:GET /users}": ["p(95)<100"],
+      "checks": ["rate==1"]
+    }
+  }
 }

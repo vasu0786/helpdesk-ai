@@ -18,7 +18,9 @@ const profiles = JSON.parse(open("../config/login.json"));
 const profile = profiles[PROFILE];
 
 // The accounts to log in with. SharedArray reads the file once for all VUs.
-const users = new SharedArray("users", () => JSON.parse(open("../data/users.json")));
+// PERF-AUTH-009: -e USERS_FILE=../data/perf-users.json swaps the 4 demo accounts for the 200 seeded ones.
+const USERS_FILE = __ENV.USERS_FILE;
+const users = new SharedArray("users", () => JSON.parse(open(USERS_FILE || "../data/users.json")));
 
 export const options = profile;
 
@@ -27,7 +29,10 @@ export const options = profile;
 export default function () {
   // The smoke run has only VU 1, so it always uses the first account (admin).
   // With more VUs, each VU takes the next account in the list.
-  const user = users[(__VU - 1) % users.length];
+  // PERF-AUTH-009: with the 200 seeded accounts, count iterations across the whole test instead,
+  // so all 200 accounts get used (20 VUs would only ever touch 20 of them).
+  const index = USERS_FILE ? exec.scenario.iterationInTest : __VU - 1;
+  const user = users[index % users.length];
 
   const res = login(user.email, user.password);
 
@@ -56,6 +61,7 @@ export default function () {
 export function handleSummary(data) {
   return {
     stdout: textSummary(data, { indent: " ", enableColors: true }),
-    [`results/login-${PROFILE}.json`]: JSON.stringify(data, null, 2),
+    // The AUTH-009 run gets its own file, so it does not overwrite the normal load result
+    [`results/login-${PROFILE}${USERS_FILE ? "-200-users" : ""}.json`]: JSON.stringify(data, null, 2),
   };
 }

@@ -1,7 +1,36 @@
 {
-  "smoke":  { "stages": [], "thresholds": {} },
-  "load":   { "stages": [], "thresholds": {} },
-  "stress": { "stages": [], "thresholds": {} },
-  "spike":  { "stages": [], "thresholds": {} },
-  "soak":   { "stages": [], "thresholds": {} }
+  "PG-001": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration{name:GET /login.html}": ["p(95)<100"],
+      "http_req_duration{name:GET /js/api.js}": ["p(95)<100"],
+      "http_req_duration{name:GET /css/app.css}": ["p(95)<100"],
+      "checks": ["rate==1"]
+    }
+  },
+  "PG-002": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration": ["p(95)<100"],
+      "checks": ["rate==1"]
+    }
+  },
+  "PG-003": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration": ["p(95)<500"],
+      "checks": ["rate==1"]
+    }
+  },
+  "PG-004": {
+    "load": "LP-02",
+    "thresholds": {
+      "http_req_failed": ["rate==0"],
+      "http_req_duration": ["p(95)<50"],
+      "checks": ["rate==1"]
+    }
+  }
 }

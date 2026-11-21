@@ -5,12 +5,14 @@
 // PERF-TKC-002  Create ticket under load               PERF-TKG-002  Open another customer's ticket: 404
 // PERF-TKC-004  Create ticket stress + row count       PERF-CMT-001  Reply on own ticket
 // PERF-TKC-005  Blank subject under load: 400          PERF-CMT-003  List 200 comments on one ticket
+// PERF-JNY-001  Whole customer journey: login -> create -> list -> open -> reply (lib/journeys.js)
 import http from "k6/http";
 import { check, sleep } from "k6";
 import { SharedArray } from "k6/data";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.1.0/index.js";
 import { login } from "../lib/auth.js";
 import { createTicket, listTickets, getTicket, listComments, addComment } from "../lib/tickets.js";
+import { customerJourney } from "../lib/journeys.js";
 import { PROFILE } from "../lib/env.js";
 
 // ---------- INIT ----------
@@ -162,6 +164,7 @@ const TESTS = {
     "TKG-002": openOthers,
     "CMT-001": reply,
     "CMT-003": listLongThread,
+    "JNY-001": customerJourney,
 };
 
 // ---------- VU CODE ----------

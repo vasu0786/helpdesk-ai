@@ -30,6 +30,13 @@ services:
       DB_USER: ${POSTGRES_USER:-helpdesk}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
       JWT_SECRET: ${JWT_SECRET:-change-me-this-is-a-dev-only-secret-key-123456}
+      # SLA times, default as in application.yml. PERF-JNY-005 starts the app with short ones, e.g.
+      # SLA_LOW=PT3M SLA_MEDIUM=PT2M SLA_HIGH=PT1M SLA_URGENT=PT1M docker compose --profile app up -d app
+      SLA_URGENT: ${SLA_URGENT:-PT4H}
+      SLA_HIGH: ${SLA_HIGH:-PT8H}
+      SLA_MEDIUM: ${SLA_MEDIUM:-PT24H}
+      SLA_LOW: ${SLA_LOW:-PT72H}
+      SLA_CHECK_INTERVAL: ${SLA_CHECK_INTERVAL:-PT1M}
     ports:
       - "8080:8080"
 
