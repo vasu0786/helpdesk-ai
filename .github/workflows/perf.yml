@@ -1,0 +1,85 @@
+name: Performance tests
+
+on:
+  push:
+    branches: [dev]          # every push to dev runs the smoke tests
+  workflow_dispatch:         # "Run workflow" button for one heavier test
+    inputs:
+      script:
+        description: File in perf/scenarios
+        default: mixed-workload.js
+      profile:
+        description: Test case id, e.g. JNY-003
+        default: JNY-007
+
+jobs:
+  perf:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download the code
+        uses: actions/checkout@v5
+
+      - name: Install Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Start PostgreSQL database
+        run: docker compose up -d postgres --wait
+
+      - name: Build backend application
+        working-directory: backend
+        run: mvn -B package -DskipTests
+
+      - name: Start backend application
+        run: |
+          java -jar backend/target/helpdesk-backend-*.jar > backend.log 2>&1 &
+          for i in {1..30}; do
+            if curl -s -f http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Backend is UP"; break
+            fi
+            if [ $i -eq 30 ]; then cat backend.log; exit 1; fi
+            sleep 2
+          done
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Seed tickets
+        working-directory: perf
+        run: k6 run -e COUNT=400 scripts/seed-tickets.js
+
+      - name: Smoke tests
+        if: github.event_name == 'push'
+        working-directory: perf
+        run: |
+          k6 run -e PROFILE=smoke   scenarios/login.js
+          k6 run -e PROFILE=smoke   scenarios/register.js
+          k6 run -e PROFILE=TKC-001 scenarios/customer-journey.js
+          k6 run -e PROFILE=TKS-001 scenarios/agent-journey.js
+          k6 run -e PROFILE=JNY-007 scenarios/mixed-workload.js
+
+      - name: Chosen test
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: perf
+        run: k6 run -e PROFILE=${{ inputs.profile }} scenarios/${{ inputs.script }}
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: perf/results/
+          if-no-files-found: ignore
+
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: backend.log
+          if-no-files-found: ignore
